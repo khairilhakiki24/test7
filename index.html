@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#4f46e5" id="meta-theme-color">
+    <meta name="theme-color" content="#db0101" id="meta-theme-color">
     <title>KasPro - Manajemen Uang Kas & Iuran</title>
     
     <!-- PWA Manifest -->
@@ -12,8 +12,8 @@
 
     <style>
         :root {
-            /* Warna Primary Default: Indigo Premium (Bisa diubah user via Pengaturan) */
-            --color-primary: #4f46e5;
+            /* Warna Primary Default: Merah (#db0101) (Bisa diubah user via Pengaturan) */
+            --color-primary: #db0101;
             --color-primary-light: color-mix(in srgb, var(--color-primary) 20%, transparent);
         }
 
@@ -130,7 +130,7 @@
                     },
                     boxShadow: {
                         'soft': '0 20px 40px -15px rgba(0,0,0,0.05)',
-                        'glow': '0 0 20px rgba(79, 70, 229, 0.4)' /* Akan di-override via JS berdasarkan var css */
+                        'glow': '0 0 20px var(--color-primary-light)' /* Diupdate agar sesuai dengan warna primary */
                     },
                     fontFamily: {
                         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
@@ -456,7 +456,7 @@
                 transactions: [],
                 settings: {
                     appName: 'KasPro',
-                    primaryColor: '#4f46e5',
+                    primaryColor: '#db0101', // Ubah warna bawaan menjadi merah
                     autoPrint: false
                 },
                 currentRoute: 'dashboard',
@@ -761,7 +761,7 @@
                                         <div class="flex items-center gap-3">
                                             <input type="color" id="setColor" value="${this.state.settings.primaryColor}" class="w-12 h-12 rounded cursor-pointer border-0 p-0 bg-transparent">
                                             <button onclick="app.updateSettings('primaryColor', document.getElementById('setColor').value); app.showToast('Warna diperbarui', 'success')" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white rounded-xl font-medium btn-press text-sm border border-slate-200 dark:border-slate-700">Terapkan Warna</button>
-                                            <button onclick="app.updateSettings('primaryColor', '#4f46e5'); document.getElementById('setColor').value='#4f46e5'" class="px-4 py-2 text-primary rounded-xl font-medium btn-press text-sm">Reset Default</button>
+                                            <button onclick="app.updateSettings('primaryColor', '#db0101'); document.getElementById('setColor').value='#db0101'" class="px-4 py-2 text-primary rounded-xl font-medium btn-press text-sm">Reset Default</button>
                                         </div>
                                     </div>
                                 </div>
