@@ -1263,10 +1263,12 @@
             async resetData() {
                 this.showConfirm(
                     "Reset Semua Data?", 
-                    "PERINGATAN! Semua anggota dan riwayat transaksi akan dihapus secara permanen. Anda yakin?", 
+                    "PERINGATAN! Semua data, transaksi, dan pengaturan (termasuk warna) akan direset ke bawaan. Anda yakin?", 
                     async () => {
                         await db.clear('members');
                         await db.clear('transactions');
+                        await db.clear('settings'); // Menghapus pengaturan warna/nama yang tersimpan di memori
+                        
                         this.state.members = [];
                         this.state.transactions = [];
                         localStorage.removeItem('kaspro_draft_trx');
@@ -1276,10 +1278,12 @@
                         await this.injectDummyData();
                         localStorage.setItem('kaspro_inited', 'true');
                         
-                        this.showToast("Aplikasi direset & data dummy dimuat ulang", "success");
+                        this.showToast("Aplikasi direset. Memuat ulang...", "success");
                         
-                        // Kembali ke dashboard jika sedang di halaman lain untuk melihat perubahan
-                        this.navigate('dashboard');
+                        // Langsung refresh halaman agar warna dan UI kembali ke default seketika
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
                     }
                 );
             },
