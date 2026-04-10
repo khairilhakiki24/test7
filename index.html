@@ -60,7 +60,7 @@
         }
         
         /* Safe Area Padding untuk mencegah UI tertutup di Mobile */
-        .pb-safe { padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)) !important; }
+        .pb-safe { padding-bottom: calc(110px + env(safe-area-inset-bottom, 20px)) !important; }
         .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 
         /* Swipeable Modal / Bottom Sheet */
@@ -145,7 +145,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white pt-safe">
+<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-[100dvh] flex overflow-hidden selection:bg-primary selection:text-white pt-safe">
 
     <!-- 1. NOTIFIKASI TOAST -->
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm"></div>
