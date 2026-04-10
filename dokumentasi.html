@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi KasPro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto bg-white p-6 md:p-10 rounded-3xl shadow-xl">
+        <header class="text-center mb-10 border-b pb-8">
+            <h1 class="text-4xl font-extrabold text-indigo-600 mb-2">Manual Book KasPro</h1>
+            <p class="text-slate-500">Panduan Lengkap Penggunaan, Instalasi & Modifikasi Web App PWA</p>
+        </header>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span> Panduan Penggunaan Utama</h2>
+            <div class="space-y-4 text-slate-600 leading-relaxed">
+                <p><strong>KasPro</strong> adalah aplikasi 100% Offline PWA untuk mengelola uang kas, iuran, dan patungan kelas/organisasi secara profesional. Data disimpan langsung di browser perangkat Anda (IndexedDB).</p>
+                <ul class="list-disc pl-5 space-y-2">
+                    <li><strong>Tambah Anggota:</strong> Pergi ke menu <kbd class="bg-slate-100 border px-1 rounded">Anggota</kbd>, klik tombol Tambah. Anda harus membuat anggota dulu sebelum menerima iuran.</li>
+                    <li><strong>Mencatat Iuran (Pemasukan):</strong> Klik <kbd class="bg-slate-100 border px-1 rounded">Terima Iuran</kbd> di Beranda atau di menu Transaksi. Pilih anggota, masukkan nominal dan keterangan. Data draf otomatis tersimpan jika Anda tidak sengaja keluar/refresh web.</li>
+                    <li><strong>Mencatat Pengeluaran:</strong> Klik <kbd class="bg-slate-100 border px-1 rounded">Catat Pengeluaran</kbd>. Berbeda dengan pemasukan, pengeluaran tidak mewajibkan pilihan Anggota.</li>
+                    <li><strong>Mencetak & Bagikan Struk:</strong> Setelah menyimpan transaksi, Modal Struk akan muncul. Anda bisa klik <strong>Cetak</strong> untuk print menggunakan printer Thermal (Bluetooth/USB) atau klik <strong>Bagikan</strong> untuk mengirim gambar struk via WhatsApp.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span> Panduan Modifikasi & Branding</h2>
+            <div class="space-y-4 text-slate-600 leading-relaxed">
+                <ul class="list-disc pl-5 space-y-4">
+                    <li><strong>Ganti Nama & Warna:</strong> Masuk ke aplikasi, klik menu <kbd class="bg-slate-100 border px-1 rounded">Pengaturan</kbd>. Anda bisa mengganti nama "KasPro" menjadi nama brand Anda sendiri, serta mengganti Warna Utama sesuka hati.</li>
+                    <li>
+                        <strong>Mengatur Icon PWA (PENTING!):</strong> 
+                        Agar aplikasi bisa diinstal di HP/Desktop dengan logo buatan Anda, lakukan ini:
+                        <ol class="list-decimal pl-5 mt-2 space-y-1">
+                            <li>Buat folder bernama <code>assets</code> di sebelah file <code>index.html</code>.</li>
+                            <li>Siapkan gambar logo Anda (harus PNG tanpa background rumit).</li>
+                            <li>Buat 2 ukuran gambar tersebut: <strong>192x192 pixel</strong> dan <strong>512x512 pixel</strong>.</li>
+                            <li>Simpan ke folder <code>assets</code> dengan nama masing-masing: <code>icon-192x192.png</code> dan <code>icon-512x512.png</code>.</li>
+                        </ol>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="mb-10">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2"><span class="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span> Panduan Instalasi & Hosting (Upload)</h2>
+            <div class="space-y-4 text-slate-600 leading-relaxed">
+                <p>Karena ini adalah Web App Vanilla JS, Anda <strong>TIDAK PERLU</strong> Node.js atau Database MySQL. Anda cukup upload file ini ke Hosting gratis atau berbayar.</p>
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl text-amber-800 text-sm">
+                    <strong>Syarat Wajib PWA:</strong> Hosting/Website Anda <strong>WAJIB menggunakan HTTPS (SSL)</strong>. Jika menggunakan HTTP biasa, fitur Install Aplikasi & Service Worker (Offline) tidak akan bekerja.
+                </div>
+                
+                <h3 class="font-bold mt-4">Cara Upload ke cPanel (Hosting Berbayar):</h3>
+                <ul class="list-decimal pl-5 space-y-1">
+                    <li>Login ke cPanel hosting Anda.</li>
+                    <li>Buka <strong>File Manager</strong> -> masuk ke folder <code>public_html</code>.</li>
+                    <li>Upload keempat file ini (<code>index.html</code>, <code>manifest.json</code>, <code>sw.js</code>) dan folder <code>assets</code> ke dalam <code>public_html</code>.</li>
+                    <li>Buka domain Anda, selesai!</li>
+                </ul>
+
+                <h3 class="font-bold mt-4">Cara Install ke HP (Android/iOS):</h3>
+                <ul class="list-decimal pl-5 space-y-1">
+                    <li>Buka link website Anda melalui Google Chrome (Android) atau Safari (iOS).</li>
+                    <li>Tunggu beberapa detik, akan muncul notifikasi <em>"Add to Home Screen / Instal Aplikasi"</em> di bagian bawah.</li>
+                    <li>Jika tidak muncul, klik ikon Tiga Titik di kanan atas (Chrome) atau ikon Share di bawah (Safari), lalu pilih <strong>Add to Home Screen</strong>.</li>
+                    <li>Aplikasi sekarang sudah terinstal seperti aplikasi Native dan bisa dibuka <strong>100% tanpa internet</strong>.</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer class="mt-12 pt-8 border-t text-center text-slate-500 text-sm">
+            &copy; 2026 Bejaja Digital. Hak Cipta Dilindungi.<br>
+            <span class="text-xs">Dirancang Khusus sebagai Elite PWA Solution</span>
+        </footer>
+    </div>
+
+</body>
+</html>

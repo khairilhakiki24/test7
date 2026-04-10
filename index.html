@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#4f46e5" id="meta-theme-color">
+    <title>KasPro - Manajemen Uang Kas & Iuran</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192x192.png">
+
+    <style>
+        :root {
+            /* Warna Primary Default: Indigo Premium (Bisa diubah user via Pengaturan) */
+            --color-primary: #4f46e5;
+            --color-primary-light: color-mix(in srgb, var(--color-primary) 20%, transparent);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        
+        /* Animasi & Interaksi */
+        .btn-press { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .btn-press:active { transform: scale(0.95); }
+        
+        @keyframes fadeSlideUp { 
+            0% { opacity: 0; transform: translateY(20px); } 
+            100% { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-fade-up { animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes fadeIn {
+            0% { opacity: 0; } 100% { opacity: 1; }
+        }
+        .animate-fade-in { animation: fadeIn 0.3s ease forwards; }
+
+        /* Glassmorphism Nav & Modals */
+        .glass-nav { 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border-top: 1px solid rgba(0,0,0,0.05); 
+        }
+        .dark .glass-nav { 
+            background: rgba(11, 17, 32, 0.85); 
+            border-top: 1px solid rgba(255,255,255,0.05); 
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .dark .glass-panel {
+            background: rgba(24, 34, 53, 0.95);
+        }
+        
+        /* Safe Area Padding untuk mencegah UI tertutup di Mobile */
+        .pb-safe { padding-bottom: calc(80px + env(safe-area-inset-bottom, 20px)); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+
+        /* Swipeable Modal / Bottom Sheet */
+        .bottom-sheet {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform;
+        }
+        .drag-handle {
+            width: 40px; height: 5px; background: #cbd5e1; border-radius: 10px; margin: 8px auto;
+        }
+        .dark .drag-handle { background: #475569; }
+
+        /* Print Media / Cetak Struk Anti-Blank & Responsif Kertas */
+        @media print {
+            @page { margin: 0; size: auto; }
+            body { 
+                background: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            
+            /* Sembunyikan SEMUA elemen root secara default */
+            body > * { display: none !important; }
+            
+            /* Tampilkan HANYA Modal Struk, hilangkan status 'fixed' yang bikin blank */
+            body > #modal-receipt {
+                display: block !important;
+                position: static !important;
+                background: white !important;
+                opacity: 1 !important;
+                padding: 0 !important;
+            }
+            
+            /* Format Kontainer Struk agar responsif pas di tengah kertas A4 atau Thermal 80mm */
+            #receipt-container {
+                box-shadow: none !important;
+                transform: none !important;
+                margin: 0 auto !important;
+                width: 100% !important;
+                max-width: 80mm !important; /* Ukuran printer struk/thermal responsif */
+                background: white !important;
+                border-radius: 0 !important;
+            }
+
+            #print-area {
+                border: none !important;
+                padding: 15px !important;
+            }
+
+            /* Sembunyikan elemen tombol cetak/bagikan di dalam form saat print */
+            .no-print { display: none !important; }
+        }
+    </style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--color-primary)', 
+                        primaryLight: 'var(--color-primary-light)',
+                        darkBg: '#0B1120',
+                        darkSurface: '#182235'
+                    },
+                    boxShadow: {
+                        'soft': '0 20px 40px -15px rgba(0,0,0,0.05)',
+                        'glow': '0 0 20px rgba(79, 70, 229, 0.4)' /* Akan di-override via JS berdasarkan var css */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white pt-safe">
+
+    <!-- 1. NOTIFIKASI TOAST -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none w-[90%] max-w-sm"></div>
+
+    <!-- 2. SIDEBAR DESKTOP -->
+    <aside class="hidden md:flex flex-col w-72 bg-white dark:bg-darkSurface border-r border-slate-200 dark:border-slate-800 h-full shadow-soft z-20">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
+            <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg app-logo-bg">
+                <i data-lucide="wallet" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-xl tracking-tight app-brand-name">KasPro</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Manajemen Kas Kelas</p>
+            </div>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto" id="desktop-nav">
+            <!-- Nav Items di-render via JS -->
+        </nav>
+        <div class="p-4 border-t border-slate-100 dark:border-slate-800">
+            <div class="bg-primaryLight text-primary dark:text-primary rounded-xl p-4 text-sm font-medium flex items-center gap-3">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                <div>
+                    <p>100% Offline App</p>
+                    <p class="text-xs opacity-70">Data aman di perangkat</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 3. MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden w-full">
+        <!-- Header Mobile -->
+        <header class="md:hidden flex items-center justify-between p-4 bg-white/80 dark:bg-darkSurface/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-10 sticky top-0">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center app-logo-bg">
+                    <i data-lucide="wallet" class="w-5 h-5"></i>
+                </div>
+                <h1 class="font-bold text-lg app-brand-name">KasPro</h1>
+            </div>
+            <button onclick="app.toggleTheme()" class="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 btn-press">
+                <i data-lucide="moon" class="w-5 h-5 dark:hidden"></i>
+                <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+            </button>
+        </header>
+
+        <!-- Router View Area -->
+        <div id="app-content" class="flex-1 overflow-y-auto p-4 md:p-8 pb-safe w-full max-w-5xl mx-auto scroll-smooth">
+            <!-- Konten halaman dinamis dirender di sini -->
+        </div>
+    </main>
+
+    <!-- 4. MOBILE BOTTOM NAV -->
+    <nav class="md:hidden fixed bottom-0 left-0 w-full glass-nav z-40 pb-[env(safe-area-inset-bottom)]" id="mobile-nav">
+        <div class="flex justify-around items-center h-16 px-2">
+            <!-- Nav Items di-render via JS -->
+        </div>
+    </nav>
+
+    <!-- ==================== MODALS & BOTTOM SHEETS ==================== -->
+
+    <!-- Modal Form Transaksi / Iuran -->
+    <div id="modal-transaction" class="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[60] hidden flex items-end md:items-center justify-center animate-fade-in opacity-0">
+        <div class="bottom-sheet glass-panel w-full md:w-[480px] h-[85vh] md:h-auto md:max-h-[90vh] rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col transform translate-y-full md:translate-y-0 relative">
+            <div id="trx-drag-handle" class="w-full pt-2 pb-4 cursor-grab md:hidden flex justify-center active:cursor-grabbing">
+                <div class="drag-handle"></div>
+            </div>
+            <div class="px-6 pb-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center hidden md:flex pt-6">
+                <h2 class="text-xl font-bold" id="trx-modal-title">Tambah Transaksi</h2>
+                <button onclick="app.closeModal('modal-transaction')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full btn-press"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="md:hidden px-6 pb-2 text-center">
+                <h2 class="text-xl font-bold" id="trx-modal-title-mobile">Tambah Transaksi</h2>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 pb-safe">
+                <form id="form-transaction" class="space-y-4">
+                    <input type="hidden" id="trxId">
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Jenis Transaksi</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="relative">
+                                <input type="radio" name="trxType" value="income" class="peer sr-only" checked onchange="app.saveDraft('trx')">
+                                <div class="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-center cursor-pointer peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-500/10 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 font-medium transition-all">Pemasukan (Iuran)</div>
+                            </label>
+                            <label class="relative">
+                                <input type="radio" name="trxType" value="expense" class="peer sr-only" onchange="app.saveDraft('trx')">
+                                <div class="p-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-center cursor-pointer peer-checked:border-rose-500 peer-checked:bg-rose-50 dark:peer-checked:bg-rose-500/10 peer-checked:text-rose-600 dark:peer-checked:text-rose-400 font-medium transition-all">Pengeluaran</div>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="trx-member-container">
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Anggota / Siswa</label>
+                        <select id="trxMember" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" onchange="app.saveDraft('trx')">
+                            <!-- Options rendered via JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Nominal (Rp)</label>
+                        <input type="text" id="trxAmount" inputmode="numeric" placeholder="Contoh: 15000" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-xl font-bold" oninput="app.formatCurrencyInput(this); app.saveDraft('trx')" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Keterangan / Judul</label>
+                        <input type="text" id="trxDesc" placeholder="Bayar iuran bulan Januari..." class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" oninput="app.saveDraft('trx')" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Tanggal</label>
+                        <input type="date" id="trxDate" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" onchange="app.saveDraft('trx')" required>
+                    </div>
+                    <div class="pt-4 flex gap-3">
+                        <button type="button" onclick="app.clearDraft('trx')" class="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium btn-press flex-1 border border-slate-200 dark:border-slate-700">Hapus Draf</button>
+                        <button type="submit" class="px-4 py-3 rounded-xl bg-primary text-white font-medium shadow-glow btn-press flex-[2]">Simpan Transaksi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Siswa -->
+    <div id="modal-member" class="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[60] hidden flex items-end md:items-center justify-center animate-fade-in opacity-0">
+        <div class="bottom-sheet glass-panel w-full md:w-[400px] rounded-t-3xl md:rounded-3xl shadow-2xl flex flex-col transform translate-y-full md:translate-y-0">
+            <div id="member-drag-handle" class="w-full pt-2 pb-4 cursor-grab md:hidden flex justify-center">
+                <div class="drag-handle"></div>
+            </div>
+            <div class="px-6 pb-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center hidden md:flex pt-6">
+                <h2 class="text-xl font-bold">Data Anggota</h2>
+                <button onclick="app.closeModal('modal-member')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-full btn-press"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="md:hidden px-6 pb-2 text-center">
+                <h2 class="text-xl font-bold">Data Anggota</h2>
+            </div>
+            <div class="p-6">
+                <form id="form-member" class="space-y-4">
+                    <input type="hidden" id="memberId">
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Nama Lengkap</label>
+                        <input type="text" id="memberName" placeholder="Budi Santoso" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Nomor Telepon / WA (Opsional)</label>
+                        <input type="tel" id="memberPhone" placeholder="08123456789" class="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
+                    </div>
+                    <button type="submit" class="w-full py-3 rounded-xl bg-primary text-white font-medium shadow-glow btn-press mt-4">Simpan Data</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Struk / Sukses (TIDAK AUTO CLOSE) -->
+    <div id="modal-receipt" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md z-[70] hidden flex items-center justify-center animate-fade-in opacity-0 p-4">
+        <div class="bg-slate-100 dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300" id="receipt-container">
+            <!-- Area yang akan di-print/share -->
+            <div id="print-area" class="bg-white p-6 pb-8 border-b-2 border-dashed border-slate-300 text-black">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 mx-auto flex items-center justify-center mb-2">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 no-print"></i>
+                        <i data-lucide="wallet" class="w-8 h-8 text-slate-800 hidden print:block"></i>
+                    </div>
+                    <h2 class="font-bold text-2xl app-brand-name">KasPro</h2>
+                    <p class="text-xs text-slate-500">Bukti Transaksi Resmi</p>
+                </div>
+                
+                <div class="space-y-3 text-sm font-mono border-y border-slate-200 py-4 mb-4">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">No. Trx</span>
+                        <span class="font-bold" id="rcpt-id">TRX-123</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Tanggal</span>
+                        <span class="font-bold" id="rcpt-date">12 Jan 2026</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Tipe</span>
+                        <span class="font-bold uppercase" id="rcpt-type">PEMASUKAN</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Anggota</span>
+                        <span class="font-bold" id="rcpt-member">Budi</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <p class="text-xs text-slate-500 mb-1">Keterangan:</p>
+                    <p class="font-medium text-sm leading-tight" id="rcpt-desc">Iuran Kas Januari</p>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl text-center">
+                    <p class="text-xs text-slate-500 mb-1">Total Nominal</p>
+                    <h3 class="font-bold text-3xl text-slate-800" id="rcpt-amount">Rp 0</h3>
+                </div>
+                
+                <div class="mt-8 text-center text-xs text-slate-400">
+                    <p>Terima kasih atas partisipasinya.</p>
+                    <p class="mt-1">Generated by KasPro PWA</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons (No Print) -->
+            <div class="p-4 bg-white dark:bg-darkSurface flex gap-3 no-print">
+                <button onclick="app.shareReceipt()" class="flex-1 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl font-medium flex items-center justify-center gap-2 btn-press">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan
+                </button>
+                <button onclick="app.printReceipt()" class="flex-1 py-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-medium flex items-center justify-center gap-2 btn-press">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Cetak
+                </button>
+            </div>
+            <div class="px-4 pb-4 bg-white dark:bg-darkSurface no-print">
+                <button onclick="app.closeModal('modal-receipt')" class="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-medium btn-press flex justify-center items-center gap-2">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i> Tutup & Transaksi Baru
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus (Custom UI) -->
+    <div id="modal-confirm" class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[80] hidden flex items-center justify-center animate-fade-in opacity-0 p-4">
+        <div class="bg-white dark:bg-darkSurface w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300">
+            <div class="p-6 text-center">
+                <div class="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 mx-auto flex items-center justify-center mb-4">
+                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2 text-slate-800 dark:text-white" id="confirm-title">Konfirmasi</h3>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mb-6" id="confirm-message">Apakah Anda yakin?</p>
+                <div class="flex gap-3">
+                    <button onclick="app.closeConfirm()" class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-medium btn-press">Batal</button>
+                    <button id="confirm-yes-btn" class="flex-1 py-3 bg-rose-500 text-white rounded-xl font-medium shadow-lg shadow-rose-500/30 btn-press">Ya, Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // ==========================================
+        // 1. INDEXEDDB WRAPPER (BULLETPROOF STORAGE)
+        // ==========================================
+        const DB_NAME = 'KasProDB';
+        const DB_VERSION = 1;
+
+        const db = {
+            instance: null,
+            init: function() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('members')) {
+                            db.createObjectStore('members', { keyPath: 'id' });
+                        }
+                        if (!db.objectStoreNames.contains('transactions')) {
+                            const trxStore = db.createObjectStore('transactions', { keyPath: 'id' });
+                            trxStore.createIndex('date', 'date', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('settings')) {
+                            db.createObjectStore('settings', { keyPath: 'key' });
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.instance = e.target.result;
+                        resolve(this.instance);
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            },
+            getStore: function(storeName, mode = 'readonly') {
+                const tx = this.instance.transaction(storeName, mode);
+                return tx.objectStore(storeName);
+            },
+            getAll: function(storeName) {
+                return new Promise((resolve, reject) => {
+                    const store = this.getStore(storeName);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            put: function(storeName, data) {
+                return new Promise((resolve, reject) => {
+                    const store = this.getStore(storeName, 'readwrite');
+                    const request = store.put(data);
+                    request.onsuccess = () => resolve(data);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            delete: function(storeName, id) {
+                return new Promise((resolve, reject) => {
+                    const store = this.getStore(storeName, 'readwrite');
+                    const request = store.delete(id);
+                    request.onsuccess = () => resolve(id);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+            clear: function(storeName) {
+                return new Promise((resolve, reject) => {
+                    const store = this.getStore(storeName, 'readwrite');
+                    const request = store.clear();
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        };
+
+        // ==========================================
+        // 2. MAIN APP LOGIC (UI, STATE, ROUTING)
+        // ==========================================
+        const app = {
+            state: {
+                members: [],
+                transactions: [],
+                settings: {
+                    appName: 'KasPro',
+                    primaryColor: '#4f46e5',
+                    autoPrint: false
+                },
+                currentRoute: 'dashboard',
+                drafts: {}
+            },
+            
+            navItems: [
+                { id: 'dashboard', icon: 'layout-dashboard', label: 'Beranda' },
+                { id: 'members', icon: 'users', label: 'Anggota' },
+                { id: 'transactions', icon: 'arrow-left-right', label: 'Transaksi' },
+                { id: 'settings', icon: 'settings', label: 'Pengaturan' }
+            ],
+
+            async init() {
+                try {
+                    await db.init();
+                    await this.loadData();
+                    this.initTheme();
+                    this.initNav();
+                    this.setupSwipeToClose('trx-drag-handle', 'modal-transaction');
+                    this.setupSwipeToClose('member-drag-handle', 'modal-member');
+                    
+                    // Restore drafts if any
+                    this.restoreDraft('trx');
+
+                    // Setup form listeners
+                    document.getElementById('form-transaction').addEventListener('submit', this.handleTrxSubmit.bind(this));
+                    document.getElementById('form-member').addEventListener('submit', this.handleMemberSubmit.bind(this));
+
+                    // Setup Radio button toggle for UI logic
+                    document.querySelectorAll('input[name="trxType"]').forEach(radio => {
+                        radio.addEventListener('change', (e) => {
+                            const memberContainer = document.getElementById('trx-member-container');
+                            if(e.target.value === 'expense') {
+                                memberContainer.style.display = 'none';
+                                document.getElementById('trxMember').removeAttribute('required');
+                            } else {
+                                memberContainer.style.display = 'block';
+                                document.getElementById('trxMember').setAttribute('required', 'true');
+                            }
+                        });
+                    });
+
+                    // Cek auto-dummy data
+                    if (this.state.members.length === 0 && this.state.transactions.length === 0 && !localStorage.getItem('kaspro_inited')) {
+                        await this.injectDummyData();
+                        localStorage.setItem('kaspro_inited', 'true');
+                    }
+
+                    this.navigate('dashboard');
+                    lucide.createIcons();
+                    
+                    // Init date to today
+                    document.getElementById('trxDate').valueAsDate = new Date();
+
+                } catch (error) {
+                    console.error("Failed to initialize app:", error);
+                    this.showToast("Gagal memuat database!", "error");
+                }
+            },
+
+            async loadData() {
+                this.state.members = await db.getAll('members');
+                this.state.transactions = await db.getAll('transactions');
+                const settingsArr = await db.getAll('settings');
+                settingsArr.forEach(s => { this.state.settings[s.key] = s.value; });
+                
+                // Sort transactions by date desc
+                this.state.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+            },
+
+            // --- THEME & BRANDING ---
+            initTheme() {
+                // Apply Settings
+                this.updateBrandName(this.state.settings.appName);
+                this.updatePrimaryColor(this.state.settings.primaryColor);
+
+                // Apply Dark Mode from localstorage
+                const isDark = localStorage.getItem('theme') === 'dark';
+                if (isDark) document.documentElement.classList.add('dark');
+            },
+
+            toggleTheme() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+            },
+
+            async updateSettings(key, value) {
+                this.state.settings[key] = value;
+                await db.put('settings', { key, value });
+                if(key === 'appName') this.updateBrandName(value);
+                if(key === 'primaryColor') this.updatePrimaryColor(value);
+            },
+
+            updateBrandName(name) {
+                document.querySelectorAll('.app-brand-name').forEach(el => el.textContent = name);
+                document.title = `${name} - Manajemen Kas`;
+            },
+
+            updatePrimaryColor(hex) {
+                document.documentElement.style.setProperty('--color-primary', hex);
+                document.getElementById('meta-theme-color').setAttribute('content', hex);
+            },
+
+            // --- NAVIGATION ---
+            initNav() {
+                const desktopNav = document.getElementById('desktop-nav');
+                const mobileNav = document.querySelector('#mobile-nav div');
+                desktopNav.innerHTML = ''; mobileNav.innerHTML = '';
+
+                this.navItems.forEach(item => {
+                    // Desktop
+                    desktopNav.innerHTML += `
+                        <button onclick="app.navigate('${item.id}')" id="nav-desktop-${item.id}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all btn-press text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                            <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+                            <span class="font-medium">${item.label}</span>
+                        </button>
+                    `;
+                    // Mobile
+                    mobileNav.innerHTML += `
+                        <button onclick="app.navigate('${item.id}')" id="nav-mobile-${item.id}" class="flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all btn-press text-slate-400">
+                            <i data-lucide="${item.icon}" class="w-6 h-6 mb-1"></i>
+                            <span class="text-[10px] font-medium">${item.label}</span>
+                        </button>
+                    `;
+                });
+            },
+
+            navigate(routeId) {
+                this.state.currentRoute = routeId;
+                
+                // Update Nav Active States
+                this.navItems.forEach(item => {
+                    const dNav = document.getElementById(`nav-desktop-${item.id}`);
+                    const mNav = document.getElementById(`nav-mobile-${item.id}`);
+                    
+                    if(item.id === routeId) {
+                        dNav.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all btn-press bg-primary text-white shadow-md";
+                        mNav.className = "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all btn-press text-primary";
+                    } else {
+                        dNav.className = "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all btn-press text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800";
+                        mNav.className = "flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all btn-press text-slate-500 dark:text-slate-400";
+                    }
+                });
+
+                this.renderContent();
+            },
+
+            // --- RENDER VIEWS ---
+            renderContent() {
+                const container = document.getElementById('app-content');
+                container.innerHTML = ''; // Clear
+
+                if (this.state.currentRoute === 'dashboard') {
+                    this.renderDashboard(container);
+                } else if (this.state.currentRoute === 'members') {
+                    this.renderMembers(container);
+                } else if (this.state.currentRoute === 'transactions') {
+                    this.renderTransactions(container);
+                } else if (this.state.currentRoute === 'settings') {
+                    this.renderSettings(container);
+                }
+
+                lucide.createIcons();
+            },
+
+            renderDashboard(container) {
+                let totalIncome = 0, totalExpense = 0;
+                this.state.transactions.forEach(t => {
+                    if (t.type === 'income') totalIncome += t.amount;
+                    else totalExpense += t.amount;
+                });
+                const balance = totalIncome - totalExpense;
+
+                const recentTrx = this.state.transactions.slice(0, 5);
+
+                let html = `
+                    <div class="animate-fade-up">
+                        <h2 class="text-2xl font-bold mb-6">Ringkasan Kas</h2>
+                        
+                        <!-- Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <div class="bg-primary text-white p-6 rounded-2xl shadow-glow relative overflow-hidden">
+                                <div class="absolute -right-4 -bottom-4 opacity-20"><i data-lucide="wallet" class="w-32 h-32"></i></div>
+                                <p class="text-primaryLight text-sm font-medium mb-1">Saldo Saat Ini</p>
+                                <h3 class="text-3xl font-bold">${this.formatRp(balance)}</h3>
+                            </div>
+                            <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800">
+                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 flex items-center gap-2"><i data-lucide="arrow-down-circle" class="w-4 h-4 text-emerald-500"></i> Total Pemasukan</p>
+                                <h3 class="text-2xl font-bold text-slate-800 dark:text-white">${this.formatRp(totalIncome)}</h3>
+                            </div>
+                            <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800">
+                                <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 flex items-center gap-2"><i data-lucide="arrow-up-circle" class="w-4 h-4 text-rose-500"></i> Total Pengeluaran</p>
+                                <h3 class="text-2xl font-bold text-slate-800 dark:text-white">${this.formatRp(totalExpense)}</h3>
+                            </div>
+                        </div>
+
+                        <!-- Recent Actions -->
+                        <div class="flex gap-3 mb-8">
+                            <button onclick="app.openTrxModal('income')" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/30 btn-press flex items-center justify-center gap-2">
+                                <i data-lucide="plus" class="w-5 h-5"></i> Terima Iuran
+                            </button>
+                            <button onclick="app.openTrxModal('expense')" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-rose-500/30 btn-press flex items-center justify-center gap-2">
+                                <i data-lucide="minus" class="w-5 h-5"></i> Catat Pengeluaran
+                            </button>
+                        </div>
+
+                        <!-- Recent Transactions -->
+                        <div class="bg-white dark:bg-darkSurface rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 overflow-hidden">
+                            <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                <h3 class="font-bold text-lg">Transaksi Terakhir</h3>
+                                <button onclick="app.navigate('transactions')" class="text-sm text-primary font-medium hover:underline">Lihat Semua</button>
+                            </div>
+                            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${recentTrx.length === 0 ? '<div class="p-8 text-center text-slate-500">Belum ada transaksi</div>' : 
+                                  recentTrx.map(t => this.generateTrxItemHTML(t)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = html;
+            },
+
+            renderMembers(container) {
+                let html = `
+                    <div class="animate-fade-up flex flex-col h-full">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold">Data Anggota</h2>
+                            <button onclick="app.addMember()" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-glow btn-press flex items-center gap-2">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${this.state.members.length === 0 ? '<div class="col-span-full p-8 text-center bg-white dark:bg-darkSurface rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500">Belum ada anggota. Tambahkan sekarang.</div>' : 
+                            this.state.members.map(m => `
+                                <div class="bg-white dark:bg-darkSurface p-5 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 flex justify-between items-center group">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-primary flex items-center justify-center font-bold text-lg uppercase">${m.name.charAt(0)}</div>
+                                        <div>
+                                            <p class="font-bold text-slate-800 dark:text-white leading-tight">${m.name}</p>
+                                            <p class="text-xs text-slate-500 mt-1">${m.phone || 'Tidak ada no. HP'}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onclick="app.editMember('${m.id}')" class="p-2 text-primary btn-press bg-indigo-50 dark:bg-indigo-500/10 rounded-lg" title="Edit">
+                                            <i data-lucide="edit" class="w-4 h-4"></i>
+                                        </button>
+                                        <button onclick="app.deleteMember('${m.id}')" class="p-2 text-rose-500 btn-press bg-rose-50 dark:bg-rose-500/10 rounded-lg" title="Hapus">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = html;
+            },
+
+            renderTransactions(container) {
+                let html = `
+                    <div class="animate-fade-up">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold">Riwayat Transaksi</h2>
+                            <button onclick="app.openTrxModal('income')" class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold shadow-glow btn-press flex items-center gap-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Transaksi
+                            </button>
+                        </div>
+
+                        <div class="bg-white dark:bg-darkSurface rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800 overflow-hidden">
+                            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                                ${this.state.transactions.length === 0 ? '<div class="p-8 text-center text-slate-500">Belum ada transaksi</div>' : 
+                                  this.state.transactions.map(t => this.generateTrxItemHTML(t, true)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = html;
+            },
+
+            renderSettings(container) {
+                let html = `
+                    <div class="animate-fade-up max-w-2xl">
+                        <h2 class="text-2xl font-bold mb-6">Pengaturan</h2>
+                        
+                        <div class="space-y-6">
+                            <!-- Branding -->
+                            <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800">
+                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="paint-bucket" class="w-5 h-5 text-primary"></i> Personalisasi Brand</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Nama Aplikasi</label>
+                                        <div class="flex gap-2">
+                                            <input type="text" id="setAppName" value="${this.state.settings.appName}" class="flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary outline-none transition-all">
+                                            <button onclick="app.updateSettings('appName', document.getElementById('setAppName').value); app.showToast('Nama diperbarui', 'success')" class="px-4 py-3 bg-slate-900 dark:bg-slate-700 text-white rounded-xl font-medium btn-press">Simpan</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium mb-1 text-slate-600 dark:text-slate-400">Warna Utama (Theme Color)</label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="color" id="setColor" value="${this.state.settings.primaryColor}" class="w-12 h-12 rounded cursor-pointer border-0 p-0 bg-transparent">
+                                            <button onclick="app.updateSettings('primaryColor', document.getElementById('setColor').value); app.showToast('Warna diperbarui', 'success')" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white rounded-xl font-medium btn-press text-sm border border-slate-200 dark:border-slate-700">Terapkan Warna</button>
+                                            <button onclick="app.updateSettings('primaryColor', '#4f46e5'); document.getElementById('setColor').value='#4f46e5'" class="px-4 py-2 text-primary rounded-xl font-medium btn-press text-sm">Reset Default</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Fitur -->
+                            <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800">
+                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="printer" class="w-5 h-5 text-primary"></i> Fitur Aplikasi</h3>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="font-medium text-slate-800 dark:text-white">Cetak Struk Otomatis</p>
+                                        <p class="text-xs text-slate-500">Otomatis panggil perintah print setelah transaksi</p>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="setAutoPrint" class="sr-only peer" ${this.state.settings.autoPrint ? 'checked' : ''} onchange="app.updateSettings('autoPrint', this.checked)">
+                                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Data -->
+                            <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800">
+                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2"><i data-lucide="database" class="w-5 h-5 text-primary"></i> Manajemen Data</h3>
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <button onclick="app.exportExcel()" class="flex-1 py-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 rounded-xl font-medium btn-press flex justify-center items-center gap-2 border border-emerald-200 dark:border-emerald-800/30">
+                                        <i data-lucide="download" class="w-4 h-4"></i> Export Excel
+                                    </button>
+                                    <button onclick="app.resetData()" class="flex-1 py-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 rounded-xl font-medium btn-press flex justify-center items-center gap-2 border border-rose-200 dark:border-rose-800/30">
+                                        <i data-lucide="trash" class="w-4 h-4"></i> Reset Aplikasi
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = html;
+            },
+
+            generateTrxItemHTML(t, showAction = false) {
+                const isInc = t.type === 'income';
+                const icon = isInc ? 'arrow-down-left' : 'arrow-up-right';
+                const color = isInc ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' : 'text-rose-500 bg-rose-50 dark:bg-rose-500/10';
+                
+                let memberName = '';
+                if(isInc && t.memberId) {
+                    const m = this.state.members.find(x => x.id === t.memberId);
+                    memberName = m ? m.name : 'Anggota Dihapus';
+                }
+
+                const actionHtml = showAction ? `
+                    <div class="flex items-center gap-1 ml-3">
+                        <button onclick="app.showReceiptModal('${t.id}')" class="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-500 hover:text-primary btn-press" title="Lihat Struk">
+                            <i data-lucide="receipt" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="app.editTrx('${t.id}')" class="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg text-indigo-500 hover:text-indigo-600 btn-press" title="Edit">
+                            <i data-lucide="edit" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="app.deleteTrx('${t.id}')" class="p-2 bg-rose-50 dark:bg-rose-500/10 rounded-lg text-rose-500 hover:text-rose-600 btn-press" title="Hapus">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="p-4 md:p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <div class="flex items-center gap-3 md:gap-4">
+                            <div class="w-10 h-10 md:w-12 md:h-12 rounded-full ${color} flex items-center justify-center shrink-0">
+                                <i data-lucide="${icon}" class="w-5 h-5 md:w-6 md:h-6"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-white leading-tight md:text-lg">${t.desc}</h4>
+                                <p class="text-xs md:text-sm text-slate-500 mt-1">${this.formatDate(t.date)} ${memberName ? `• <span class="text-primary font-medium">${memberName}</span>` : ''}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="text-right">
+                                <span class="font-bold ${isInc ? 'text-emerald-500' : 'text-rose-500'} md:text-lg">${isInc ? '+' : '-'}${this.formatRp(t.amount)}</span>
+                            </div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                `;
+            },
+
+            // --- CRUD ACTIONS ---
+            addMember() {
+                document.getElementById('form-member').reset();
+                document.getElementById('memberId').value = '';
+                this.openModal('modal-member');
+            },
+
+            async handleMemberSubmit(e) {
+                e.preventDefault();
+                const existingId = document.getElementById('memberId').value;
+                const id = existingId || 'M' + Date.now();
+                const name = document.getElementById('memberName').value;
+                const phone = document.getElementById('memberPhone').value;
+
+                const member = { id, name, phone };
+                await db.put('members', member);
+                
+                this.showToast(existingId ? "Data anggota diperbarui" : "Anggota berhasil disimpan", "success");
+                this.closeModal('modal-member');
+                await this.loadData();
+                if(this.state.currentRoute === 'members') this.renderContent();
+            },
+
+            editMember(id) {
+                const m = this.state.members.find(x => x.id === id);
+                if(!m) return;
+                document.getElementById('memberId').value = m.id;
+                document.getElementById('memberName').value = m.name;
+                document.getElementById('memberPhone').value = m.phone || '';
+                this.openModal('modal-member');
+            },
+
+            async deleteMember(id) {
+                this.showConfirm(
+                    "Hapus Anggota?", 
+                    "Tindakan ini tidak dapat dibatalkan. Riwayat transaksi anggota ini akan tetap ada namun tanpa nama.", 
+                    async () => {
+                        await db.delete('members', id);
+                        this.showToast("Anggota berhasil dihapus", "success");
+                        await this.loadData();
+                        this.renderContent();
+                    }
+                );
+            },
+
+            async deleteTrx(id) {
+                this.showConfirm(
+                    "Hapus Transaksi?", 
+                    "Transaksi ini akan dihapus permanen. Saldo kas akan otomatis disesuaikan.", 
+                    async () => {
+                        await db.delete('transactions', id);
+                        this.showToast("Transaksi berhasil dihapus", "success");
+                        await this.loadData();
+                        this.renderContent();
+                    }
+                );
+            },
+
+            editTrx(id) {
+                const t = this.state.transactions.find(x => x.id === id);
+                if(!t) return;
+                
+                document.getElementById('trxId').value = t.id;
+                document.querySelector(`input[name="trxType"][value="${t.type}"]`).checked = true;
+                document.querySelector(`input[name="trxType"][value="${t.type}"]`).dispatchEvent(new Event('change'));
+                
+                // Populate options first
+                const select = document.getElementById('trxMember');
+                select.innerHTML = '<option value="" disabled>Pilih Anggota...</option>' + 
+                    this.state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+                
+                if(t.memberId) select.value = t.memberId;
+                
+                document.getElementById('trxAmount').value = t.amount.toLocaleString('id-ID');
+                document.getElementById('trxDesc').value = t.desc;
+                document.getElementById('trxDate').value = t.date;
+
+                document.getElementById('trx-modal-title').innerText = "Edit Transaksi";
+                document.getElementById('trx-modal-title-mobile').innerText = "Edit Transaksi";
+                
+                this.openModal('modal-transaction');
+            },
+
+            async handleTrxSubmit(e) {
+                e.preventDefault();
+                
+                const existingId = document.getElementById('trxId').value;
+                const type = document.querySelector('input[name="trxType"]:checked').value;
+                const amountRaw = document.getElementById('trxAmount').value.replace(/\D/g, '');
+                if(!amountRaw) return this.showToast("Nominal tidak valid", "error");
+
+                const amount = parseInt(amountRaw, 10);
+                const desc = document.getElementById('trxDesc').value;
+                const date = document.getElementById('trxDate').value;
+                const memberId = type === 'income' ? document.getElementById('trxMember').value : null;
+
+                const trx = {
+                    id: existingId || ('TRX' + Date.now()),
+                    type, amount, desc, date, memberId,
+                    createdAt: existingId ? this.state.transactions.find(t=>t.id===existingId).createdAt : new Date().toISOString()
+                };
+
+                await db.put('transactions', trx);
+                
+                // Clear draft
+                this.clearDraft('trx', true); // true = don't show toast
+                this.closeModal('modal-transaction');
+                await this.loadData();
+                if(['dashboard', 'transactions'].includes(this.state.currentRoute)) this.renderContent();
+
+                // Tampilkan pesan berbeda jika sedang mode edit
+                if(existingId) {
+                    this.showToast("Perubahan transaksi disimpan", "success");
+                } else {
+                    this.showReceiptModal(trx.id, true);
+                }
+            },
+
+            // --- CUSTOM CONFIRM MODAL ---
+            confirmAction: null,
+            showConfirm(title, message, onConfirmCallback) {
+                document.getElementById('confirm-title').innerText = title;
+                document.getElementById('confirm-message').innerText = message;
+                this.confirmAction = onConfirmCallback;
+                
+                const btn = document.getElementById('confirm-yes-btn');
+                btn.onclick = () => {
+                    this.closeConfirm();
+                    if(this.confirmAction) this.confirmAction();
+                };
+                
+                this.openModal('modal-confirm');
+            },
+            
+            closeConfirm() {
+                this.closeModal('modal-confirm');
+                setTimeout(() => { this.confirmAction = null; }, 300);
+            },
+
+            // --- MODAL CONTROLS ---
+            openModal(modalId) {
+                const modal = document.getElementById(modalId);
+                const panel = modal.querySelector('.bottom-sheet') || modal.children[0];
+                
+                modal.classList.remove('hidden');
+                // Trigger reflow
+                void modal.offsetWidth;
+                
+                modal.classList.add('opacity-100');
+                modal.classList.remove('opacity-0');
+                
+                if(panel.classList.contains('translate-y-full')) {
+                    panel.classList.remove('translate-y-full', 'md:translate-y-0');
+                    panel.classList.add('translate-y-0');
+                } else if (panel.classList.contains('scale-95')) {
+                    panel.classList.remove('scale-95');
+                    panel.classList.add('scale-100');
+                }
+            },
+
+            closeModal(modalId) {
+                const modal = document.getElementById(modalId);
+                const panel = modal.querySelector('.bottom-sheet') || modal.children[0];
+
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+
+                if(panel.classList.contains('translate-y-0')) {
+                    panel.classList.remove('translate-y-0');
+                    panel.classList.add('translate-y-full', 'md:translate-y-0');
+                } else if (panel.classList.contains('scale-100')) {
+                    panel.classList.remove('scale-100');
+                    panel.classList.add('scale-95');
+                }
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                }, 300);
+            },
+
+            openTrxModal(type) {
+                document.querySelector(`input[name="trxType"][value="${type}"]`).checked = true;
+                document.querySelector(`input[name="trxType"][value="${type}"]`).dispatchEvent(new Event('change'));
+                
+                // Populate member select
+                const select = document.getElementById('trxMember');
+                select.innerHTML = '<option value="" disabled selected>Pilih Anggota...</option>' + 
+                    this.state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+                
+                document.getElementById('trxId').value = '';
+                document.getElementById('trx-modal-title').innerText = "Tambah Transaksi";
+                document.getElementById('trx-modal-title-mobile').innerText = "Tambah Transaksi";
+                
+                this.openModal('modal-transaction');
+            },
+
+            showReceiptModal(trxId, isNew = false) {
+                const t = this.state.transactions.find(x => x.id === trxId);
+                if(!t) return;
+
+                document.getElementById('rcpt-id').innerText = t.id;
+                document.getElementById('rcpt-date').innerText = this.formatDate(t.date);
+                document.getElementById('rcpt-type').innerText = t.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
+                document.getElementById('rcpt-desc').innerText = t.desc;
+                document.getElementById('rcpt-amount').innerText = this.formatRp(t.amount);
+                
+                let memberName = '-';
+                if(t.memberId) {
+                    const m = this.state.members.find(x => x.id === t.memberId);
+                    if(m) memberName = m.name;
+                }
+                document.getElementById('rcpt-member').innerText = memberName;
+
+                this.openModal('modal-receipt');
+                this.showToast(isNew ? "Transaksi Berhasil!" : "Memuat Struk", "success");
+
+                if(isNew && this.state.settings.autoPrint) {
+                    setTimeout(() => this.printReceipt(), 500);
+                }
+            },
+
+            // --- STATE PERSISTENCE (DRAFTS) ---
+            saveDraft(formName) {
+                if(formName === 'trx') {
+                    const draft = {
+                        type: document.querySelector('input[name="trxType"]:checked').value,
+                        memberId: document.getElementById('trxMember').value,
+                        amount: document.getElementById('trxAmount').value,
+                        desc: document.getElementById('trxDesc').value,
+                        date: document.getElementById('trxDate').value
+                    };
+                    localStorage.setItem('kaspro_draft_trx', JSON.stringify(draft));
+                }
+            },
+
+            restoreDraft(formName) {
+                if(formName === 'trx') {
+                    const saved = localStorage.getItem('kaspro_draft_trx');
+                    if(saved) {
+                        try {
+                            const draft = JSON.parse(saved);
+                            if(draft.type) {
+                                document.querySelector(`input[name="trxType"][value="${draft.type}"]`).checked = true;
+                                document.querySelector(`input[name="trxType"][value="${draft.type}"]`).dispatchEvent(new Event('change'));
+                            }
+                            if(draft.amount) document.getElementById('trxAmount').value = draft.amount;
+                            if(draft.desc) document.getElementById('trxDesc').value = draft.desc;
+                            if(draft.date) document.getElementById('trxDate').value = draft.date;
+                            
+                            // Member id will be set when modal opens and options are populated.
+                            // We save it in state to apply later.
+                            this.state.drafts.trxMemberId = draft.memberId;
+                            
+                            console.log("Draft restored");
+                        } catch(e) {}
+                    }
+                }
+            },
+
+            clearDraft(formName, silent = false) {
+                if(formName === 'trx') {
+                    localStorage.removeItem('kaspro_draft_trx');
+                    document.getElementById('form-transaction').reset();
+                    document.getElementById('trxId').value = '';
+                    document.getElementById('trxDate').valueAsDate = new Date();
+                    document.querySelector(`input[name="trxType"][value="income"]`).checked = true;
+                    document.querySelector(`input[name="trxType"][value="income"]`).dispatchEvent(new Event('change'));
+                    if(!silent) this.showToast("Draf dihapus", "info");
+                }
+            },
+
+            // --- MOBILE SWIPE TO CLOSE ---
+            setupSwipeToClose(handleId, modalId) {
+                const handle = document.getElementById(handleId);
+                const modal = document.getElementById(modalId);
+                const panel = modal.querySelector('.bottom-sheet');
+                if(!handle || !panel) return;
+
+                let startY = 0;
+                let currentY = 0;
+                let isDragging = false;
+
+                handle.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                    isDragging = true;
+                    panel.style.transition = 'none';
+                }, {passive: true});
+
+                handle.addEventListener('touchmove', (e) => {
+                    if(!isDragging) return;
+                    currentY = e.touches[0].clientY - startY;
+                    if(currentY > 0) { // Only allow swiping down
+                        panel.style.transform = `translateY(${currentY}px)`;
+                    }
+                }, {passive: true});
+
+                handle.addEventListener('touchend', () => {
+                    if(!isDragging) return;
+                    isDragging = false;
+                    panel.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+                    
+                    if(currentY > 150) {
+                        // Close threshold reached
+                        this.closeModal(modalId);
+                        setTimeout(() => { panel.style.transform = ''; }, 300);
+                    } else {
+                        // Snap back
+                        panel.style.transform = 'translateY(0)';
+                    }
+                    currentY = 0;
+                });
+            },
+
+            // --- UTILITIES ---
+            formatRp(angka) {
+                return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(angka);
+            },
+
+            formatDate(dateString) {
+                const options = { day: 'numeric', month: 'short', year: 'numeric' };
+                return new Date(dateString).toLocaleDateString('id-ID', options);
+            },
+
+            formatCurrencyInput(input) {
+                let val = input.value.replace(/\D/g, '');
+                if (val !== '') {
+                    val = parseInt(val, 10).toLocaleString('id-ID');
+                    input.value = val;
+                }
+            },
+
+            showToast(msg, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const colors = {
+                    success: 'bg-emerald-500 text-white shadow-emerald-500/20',
+                    error: 'bg-rose-500 text-white shadow-rose-500/20',
+                    info: 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 shadow-slate-900/20'
+                };
+                
+                toast.className = `p-4 rounded-xl shadow-lg flex items-center gap-3 animate-fade-up text-sm font-medium ${colors[type]}`;
+                let icon = type === 'success' ? 'check-circle' : (type === 'error' ? 'alert-circle' : 'info');
+                
+                toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i> <span>${msg}</span>`;
+                container.appendChild(toast);
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            },
+
+            // --- EXPORT & SHARE ---
+            async exportExcel() {
+                try {
+                    const wb = XLSX.utils.book_new();
+                    
+                    // Transaksi Sheet
+                    const wsTrx = XLSX.utils.json_to_sheet(this.state.transactions.map(t => {
+                        let memberName = '-';
+                        if(t.memberId) {
+                            const m = this.state.members.find(x=>x.id===t.memberId);
+                            if(m) memberName = m.name;
+                        }
+                        return {
+                            ID: t.id, Tanggal: t.date, Tipe: t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+                            Anggota: memberName, Keterangan: t.desc, "Nominal (Rp)": t.amount
+                        }
+                    }));
+                    XLSX.utils.book_append_sheet(wb, wsTrx, "Riwayat Transaksi");
+
+                    // Anggota Sheet
+                    const wsMembers = XLSX.utils.json_to_sheet(this.state.members.map(m => ({
+                        ID: m.id, Nama: m.name, Telepon: m.phone || '-'
+                    })));
+                    XLSX.utils.book_append_sheet(wb, wsMembers, "Data Anggota");
+
+                    XLSX.writeFile(wb, `Backup_KasPro_${new Date().toISOString().slice(0,10)}.xlsx`);
+                    this.showToast("Export Excel Berhasil", "success");
+                } catch(e) {
+                    this.showToast("Gagal export Excel", "error");
+                }
+            },
+
+            printReceipt() {
+                window.print();
+            },
+
+            async shareReceipt() {
+                try {
+                    const el = document.getElementById('print-area');
+                    const canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff' });
+                    canvas.toBlob(async (blob) => {
+                        const file = new File([blob], "struk-kaspro.png", { type: "image/png" });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                title: 'Struk Transaksi',
+                                text: 'Berikut bukti transaksi dari KasPro',
+                                files: [file]
+                            });
+                        } else {
+                            // Fallback download if share not supported
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = 'struk.png'; a.click();
+                            this.showToast("Struk diunduh (Share tidak didukung)", "info");
+                        }
+                    });
+                } catch(e) {
+                    this.showToast("Gagal membagikan struk", "error");
+                }
+            },
+
+            async resetData() {
+                this.showConfirm(
+                    "Reset Semua Data?", 
+                    "PERINGATAN! Semua anggota dan riwayat transaksi akan dihapus secara permanen. Anda yakin?", 
+                    async () => {
+                        await db.clear('members');
+                        await db.clear('transactions');
+                        this.state.members = [];
+                        this.state.transactions = [];
+                        localStorage.removeItem('kaspro_draft_trx');
+                        localStorage.removeItem('kaspro_inited'); // Hapus flag inisialisasi
+                        
+                        // Inject ulang data dummy
+                        await this.injectDummyData();
+                        localStorage.setItem('kaspro_inited', 'true');
+                        
+                        this.showToast("Aplikasi direset & data dummy dimuat ulang", "success");
+                        
+                        // Kembali ke dashboard jika sedang di halaman lain untuk melihat perubahan
+                        this.navigate('dashboard');
+                    }
+                );
+            },
+
+            // --- AUTO DUMMY ---
+            async injectDummyData() {
+                const members = [
+                    { id: 'M1', name: 'Ahmad Faisal', phone: '081200001111' },
+                    { id: 'M2', name: 'Siti Nurhaliza', phone: '081200002222' },
+                    { id: 'M3', name: 'Budi Santoso', phone: '081200003333' }
+                ];
+                for(let m of members) await db.put('members', m);
+
+                const trxs = [
+                    { id: 'TRX1', type: 'income', amount: 20000, desc: 'Iuran Wajib Jan', date: new Date().toISOString().slice(0,10), memberId: 'M1' },
+                    { id: 'TRX2', type: 'income', amount: 20000, desc: 'Iuran Wajib Jan', date: new Date().toISOString().slice(0,10), memberId: 'M2' },
+                    { id: 'TRX3', type: 'expense', amount: 15000, desc: 'Beli Sapu Kelas', date: new Date().toISOString().slice(0,10), memberId: null }
+                ];
+                for(let t of trxs) await db.put('transactions', t);
+                
+                await this.loadData();
+            }
+        };
+
+        // Bootstrap App
+        window.addEventListener('DOMContentLoaded', () => {
+            app.init();
+            
+            // Register Service Worker (Hanya di lingkungan yang mendukung)
+            if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
+                navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW Registered', reg))
+                .catch(err => console.error('SW Error', err));
+            } else {
+                console.log('SW Skipped: Lingkungan saat ini (blob/file) tidak mendukung Service Worker.');
+            }
+        });
+    </script>
+</body>
+</html>

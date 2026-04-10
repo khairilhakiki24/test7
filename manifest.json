@@ -1,0 +1,22 @@
+{
+  "name": "KasPro - Manajemen Kas & Iuran",
+  "short_name": "KasPro",
+  "description": "Aplikasi PWA Offline untuk manajemen uang kas kelas, organisasi, dan iuran bulanan.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
